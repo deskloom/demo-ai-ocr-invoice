@@ -1,0 +1,9 @@
+日本語フォントについて
+
+サンプル生成では Noto Sans JP (SIL Open Font License 1.1) を使用します。
+取得元: https://github.com/notofonts/noto-cjk (Sans/SubsetOTF/JP/NotoSansJP-Regular.otf)
+ライセンス: https://scripts.sil.org/OFL
+
+フォントのバイナリはリポジトリに含めず、生成時に自動取得します。
+PDFにはフォントがサブセット埋め込みされるため、閲覧に追加フォントは不要です。
+フォントを取得できない環境では英数字(ローマ字)で生成されます。

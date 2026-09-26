@@ -1,0 +1,36 @@
+{
+  "file": "inv-06-bad-math.pdf",
+  "data": {
+    "docType": "invoice",
+    "issuer": "架空サンプル商事株式会社",
+    "registrationNumber": "T9111111111111",
+    "issueDate": "2026-09-15",
+    "dueDate": "2026-10-15",
+    "documentNumber": "INV-2026-0006",
+    "lineItems": [
+      {
+        "name": "デモ用ノートA4",
+        "quantity": 10,
+        "unitPrice": 220,
+        "amount": 2300
+      },
+      {
+        "name": "デモ用ペン黒12本入",
+        "quantity": 3,
+        "unitPrice": 880,
+        "amount": 2640
+      }
+    ],
+    "subtotal": 4840,
+    "taxBreakdown": [
+      {
+        "rate": 0.1,
+        "base": 4840,
+        "tax": 484
+      }
+    ],
+    "total": 5324,
+    "currency": "JPY"
+  },
+  "needsReview": true
+}

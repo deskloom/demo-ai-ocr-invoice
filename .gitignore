@@ -1,0 +1,10 @@
+node_modules/
+dist/
+out/
+.env
+TASK.md
+.chrome-profile/
+assets/fonts/*.ttf
+assets/fonts/*.otf
+assets/fonts/*.woff*
+!assets/fonts/.gitkeep

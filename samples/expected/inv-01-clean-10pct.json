@@ -1,0 +1,42 @@
+{
+  "file": "inv-01-clean-10pct.pdf",
+  "data": {
+    "docType": "invoice",
+    "issuer": "架空サンプル商事株式会社",
+    "registrationNumber": "T9111111111111",
+    "issueDate": "2026-09-01",
+    "dueDate": "2026-09-30",
+    "documentNumber": "INV-2026-0001",
+    "lineItems": [
+      {
+        "name": "デモ用ノートA4",
+        "quantity": 10,
+        "unitPrice": 220,
+        "amount": 2200
+      },
+      {
+        "name": "デモ用ペン黒12本入",
+        "quantity": 3,
+        "unitPrice": 880,
+        "amount": 2640
+      },
+      {
+        "name": "コピー用紙500枚",
+        "quantity": 5,
+        "unitPrice": 550,
+        "amount": 2750
+      }
+    ],
+    "subtotal": 7590,
+    "taxBreakdown": [
+      {
+        "rate": 0.1,
+        "base": 7590,
+        "tax": 759
+      }
+    ],
+    "total": 8349,
+    "currency": "JPY"
+  },
+  "needsReview": false
+}

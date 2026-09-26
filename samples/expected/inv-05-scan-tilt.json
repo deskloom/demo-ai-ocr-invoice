@@ -1,0 +1,30 @@
+{
+  "file": "inv-05-scan-tilt.jpg",
+  "data": {
+    "docType": "invoice",
+    "issuer": "見本フーズ株式会社",
+    "registrationNumber": "T9222222222222",
+    "issueDate": "2026-09-05",
+    "dueDate": "2026-10-05",
+    "documentNumber": "INV-2026-0005",
+    "lineItems": [
+      {
+        "name": "デモ弁当(軽減8%)",
+        "quantity": 10,
+        "unitPrice": 600,
+        "amount": 6000
+      }
+    ],
+    "subtotal": 6000,
+    "taxBreakdown": [
+      {
+        "rate": 0.08,
+        "base": 6000,
+        "tax": 480
+      }
+    ],
+    "total": 6480,
+    "currency": "JPY"
+  },
+  "needsReview": false
+}

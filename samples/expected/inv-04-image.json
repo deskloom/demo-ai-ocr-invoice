@@ -1,0 +1,30 @@
+{
+  "file": "inv-04-image.png",
+  "data": {
+    "docType": "invoice",
+    "issuer": "架空サンプル商事株式会社",
+    "registrationNumber": "T9111111111111",
+    "issueDate": "2026-09-01",
+    "dueDate": "2026-09-30",
+    "documentNumber": "INV-2026-0004",
+    "lineItems": [
+      {
+        "name": "デモ用ノートA4",
+        "quantity": 5,
+        "unitPrice": 220,
+        "amount": 1100
+      }
+    ],
+    "subtotal": 1100,
+    "taxBreakdown": [
+      {
+        "rate": 0.1,
+        "base": 1100,
+        "tax": 110
+      }
+    ],
+    "total": 1210,
+    "currency": "JPY"
+  },
+  "needsReview": false
+}

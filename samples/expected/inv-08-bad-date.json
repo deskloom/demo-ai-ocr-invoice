@@ -1,0 +1,30 @@
+{
+  "file": "inv-08-bad-date.pdf",
+  "data": {
+    "docType": "invoice",
+    "issuer": "テスト文具卸株式会社",
+    "registrationNumber": "T9333333333333",
+    "issueDate": "2026-09-20",
+    "dueDate": "2026-09-01",
+    "documentNumber": "INV-2026-0008",
+    "lineItems": [
+      {
+        "name": "デモ用ノートA4",
+        "quantity": 2,
+        "unitPrice": 220,
+        "amount": 440
+      }
+    ],
+    "subtotal": 440,
+    "taxBreakdown": [
+      {
+        "rate": 0.1,
+        "base": 440,
+        "tax": 44
+      }
+    ],
+    "total": 484,
+    "currency": "JPY"
+  },
+  "needsReview": true
+}

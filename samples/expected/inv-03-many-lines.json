@@ -1,0 +1,120 @@
+{
+  "file": "inv-03-many-lines.pdf",
+  "data": {
+    "docType": "invoice",
+    "issuer": "テスト文具卸株式会社",
+    "registrationNumber": "T9333333333333",
+    "issueDate": "2026-09-10",
+    "dueDate": "2026-10-10",
+    "documentNumber": "INV-2026-0003",
+    "lineItems": [
+      {
+        "name": "デモ文具セット01",
+        "quantity": 1,
+        "unitPrice": 500,
+        "amount": 500
+      },
+      {
+        "name": "デモ文具セット02",
+        "quantity": 2,
+        "unitPrice": 600,
+        "amount": 1200
+      },
+      {
+        "name": "デモ文具セット03",
+        "quantity": 3,
+        "unitPrice": 700,
+        "amount": 2100
+      },
+      {
+        "name": "デモ文具セット04",
+        "quantity": 4,
+        "unitPrice": 800,
+        "amount": 3200
+      },
+      {
+        "name": "デモ文具セット05",
+        "quantity": 1,
+        "unitPrice": 900,
+        "amount": 900
+      },
+      {
+        "name": "デモ文具セット06",
+        "quantity": 2,
+        "unitPrice": 1000,
+        "amount": 2000
+      },
+      {
+        "name": "デモ文具セット07",
+        "quantity": 3,
+        "unitPrice": 1100,
+        "amount": 3300
+      },
+      {
+        "name": "デモ文具セット08",
+        "quantity": 4,
+        "unitPrice": 1200,
+        "amount": 4800
+      },
+      {
+        "name": "デモ文具セット09",
+        "quantity": 1,
+        "unitPrice": 1300,
+        "amount": 1300
+      },
+      {
+        "name": "デモ文具セット10",
+        "quantity": 2,
+        "unitPrice": 1400,
+        "amount": 2800
+      },
+      {
+        "name": "デモ文具セット11",
+        "quantity": 3,
+        "unitPrice": 1500,
+        "amount": 4500
+      },
+      {
+        "name": "デモ文具セット12",
+        "quantity": 4,
+        "unitPrice": 1600,
+        "amount": 6400
+      },
+      {
+        "name": "デモ文具セット13",
+        "quantity": 1,
+        "unitPrice": 1700,
+        "amount": 1700
+      },
+      {
+        "name": "デモ文具セット14",
+        "quantity": 2,
+        "unitPrice": 1800,
+        "amount": 3600
+      },
+      {
+        "name": "デモ文具セット15",
+        "quantity": 3,
+        "unitPrice": 1900,
+        "amount": 5700
+      },
+      {
+        "name": "デモ文具セット16",
+        "quantity": 4,
+        "unitPrice": 2000,
+        "amount": 8000
+      }
+    ],
+    "subtotal": 52000,
+    "taxBreakdown": [
+      {
+        "rate": 0.1,
+        "base": 52000,
+        "tax": 5200
+      }
+    ],
+    "total": 57200,
+    "currency": "JPY"
+  },
+  "needsReview": false
+}

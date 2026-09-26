@@ -1,0 +1,47 @@
+{
+  "file": "inv-02-mixed-8-10.pdf",
+  "data": {
+    "docType": "invoice",
+    "issuer": "見本フーズ株式会社",
+    "registrationNumber": "T9222222222222",
+    "issueDate": "2026-09-05",
+    "dueDate": "2026-10-05",
+    "documentNumber": "INV-2026-0002",
+    "lineItems": [
+      {
+        "name": "デモ弁当(軽減8%)",
+        "quantity": 20,
+        "unitPrice": 600,
+        "amount": 12000
+      },
+      {
+        "name": "デモ茶ペットボトル(軽減8%)",
+        "quantity": 30,
+        "unitPrice": 150,
+        "amount": 4500
+      },
+      {
+        "name": "配達料",
+        "quantity": 1,
+        "unitPrice": 2000,
+        "amount": 2000
+      }
+    ],
+    "subtotal": 18500,
+    "taxBreakdown": [
+      {
+        "rate": 0.08,
+        "base": 16500,
+        "tax": 1320
+      },
+      {
+        "rate": 0.1,
+        "base": 2000,
+        "tax": 200
+      }
+    ],
+    "total": 20020,
+    "currency": "JPY"
+  },
+  "needsReview": false
+}

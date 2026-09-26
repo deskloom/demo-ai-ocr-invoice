@@ -1,0 +1,17 @@
+{
+  "file": "rcp-02-missing.pdf",
+  "data": {
+    "docType": "receipt",
+    "issuer": null,
+    "registrationNumber": null,
+    "issueDate": "2026-09-25",
+    "dueDate": null,
+    "documentNumber": "RCP-2026-0002",
+    "lineItems": [],
+    "subtotal": null,
+    "taxBreakdown": [],
+    "total": 3300,
+    "currency": "JPY"
+  },
+  "needsReview": true
+}

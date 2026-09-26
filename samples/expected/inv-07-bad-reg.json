@@ -1,0 +1,30 @@
+{
+  "file": "inv-07-bad-reg.pdf",
+  "data": {
+    "docType": "invoice",
+    "issuer": "見本物流株式会社",
+    "registrationNumber": "T8555555555555",
+    "issueDate": "2026-09-16",
+    "dueDate": "2026-10-16",
+    "documentNumber": "INV-2026-0007",
+    "lineItems": [
+      {
+        "name": "配送費",
+        "quantity": 2,
+        "unitPrice": 5000,
+        "amount": 10000
+      }
+    ],
+    "subtotal": 10000,
+    "taxBreakdown": [
+      {
+        "rate": 0.1,
+        "base": 10000,
+        "tax": 1000
+      }
+    ],
+    "total": 11000,
+    "currency": "JPY"
+  },
+  "needsReview": true
+}

@@ -1,0 +1,30 @@
+{
+  "file": "inv-12-bad-date2.pdf",
+  "data": {
+    "docType": "invoice",
+    "issuer": "デモ食品株式会社",
+    "registrationNumber": "T9444444444444",
+    "issueDate": "2026-02-30",
+    "dueDate": "2026-03-31",
+    "documentNumber": "INV-2026-0012",
+    "lineItems": [
+      {
+        "name": "デモ弁当",
+        "quantity": 5,
+        "unitPrice": 600,
+        "amount": 3000
+      }
+    ],
+    "subtotal": 3000,
+    "taxBreakdown": [
+      {
+        "rate": 0.08,
+        "base": 3000,
+        "tax": 240
+      }
+    ],
+    "total": 3240,
+    "currency": "JPY"
+  },
+  "needsReview": true
+}

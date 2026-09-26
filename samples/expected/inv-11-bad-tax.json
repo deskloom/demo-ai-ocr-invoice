@@ -1,0 +1,30 @@
+{
+  "file": "inv-11-bad-tax.pdf",
+  "data": {
+    "docType": "invoice",
+    "issuer": "見本フーズ株式会社",
+    "registrationNumber": "T9222222222222",
+    "issueDate": "2026-09-22",
+    "dueDate": "2026-10-22",
+    "documentNumber": "INV-2026-0011",
+    "lineItems": [
+      {
+        "name": "配達料",
+        "quantity": 1,
+        "unitPrice": 10000,
+        "amount": 10000
+      }
+    ],
+    "subtotal": 10000,
+    "taxBreakdown": [
+      {
+        "rate": 0.1,
+        "base": 10000,
+        "tax": 1500
+      }
+    ],
+    "total": 11500,
+    "currency": "JPY"
+  },
+  "needsReview": true
+}

@@ -1,0 +1,30 @@
+{
+  "file": "inv-10-dup-b.pdf",
+  "data": {
+    "docType": "invoice",
+    "issuer": "架空サンプル商事株式会社",
+    "registrationNumber": "T9111111111111",
+    "issueDate": "2026-09-21",
+    "dueDate": "2026-10-21",
+    "documentNumber": "INV-2026-0009",
+    "lineItems": [
+      {
+        "name": "コピー用紙500枚",
+        "quantity": 4,
+        "unitPrice": 550,
+        "amount": 2200
+      }
+    ],
+    "subtotal": 2200,
+    "taxBreakdown": [
+      {
+        "rate": 0.1,
+        "base": 2200,
+        "tax": 220
+      }
+    ],
+    "total": 2420,
+    "currency": "JPY"
+  },
+  "needsReview": true
+}

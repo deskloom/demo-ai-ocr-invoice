@@ -1,0 +1,17 @@
+{
+  "file": "rcp-01-simple.pdf",
+  "data": {
+    "docType": "receipt",
+    "issuer": "デモ商店",
+    "registrationNumber": null,
+    "issueDate": "2026-09-12",
+    "dueDate": null,
+    "documentNumber": "RCP-2026-0001",
+    "lineItems": [],
+    "subtotal": null,
+    "taxBreakdown": [],
+    "total": 5500,
+    "currency": "JPY"
+  },
+  "needsReview": false
+}
