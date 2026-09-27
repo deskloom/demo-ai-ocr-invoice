@@ -1,5 +1,6 @@
 import express from "express";
 import multer from "multer";
+import { pathToFileURL } from "node:url";
 import "dotenv/config";
 import { GeminiExtractor } from "./gemini.js";
 import { validateBatch } from "./validate.js";
@@ -16,8 +17,26 @@ function mimeOf(filename: string, mimetype: string): string {
   return "application/octet-stream";
 }
 
+const ALLOWED_EXTS = new Set([".pdf", ".png", ".jpg", ".jpeg", ".webp"]);
+const ALLOWED_MIMES = new Set([
+  "application/pdf",
+  "image/png",
+  "image/jpeg",
+  "image/webp",
+]);
+
+export function isAllowedFile(filename: string, mimetype: string): boolean {
+  const lower = filename.toLowerCase();
+  const dot = lower.lastIndexOf(".");
+  const ext = dot >= 0 ? lower.slice(dot) : "";
+  if (!ALLOWED_EXTS.has(ext)) return false;
+  const effective = mimeOf(filename, mimetype);
+  return ALLOWED_MIMES.has(effective);
+}
+
 export function createApp(): express.Express {
   const app = express();
+  app.disable("x-powered-by");
   const upload = multer({
     storage: multer.memoryStorage(),
     limits: { fileSize: 20 * 1024 * 1024, files: 10 },
@@ -35,6 +54,14 @@ export function createApp(): express.Express {
       if (files.length === 0) {
         res.status(400).json({ error: "ファイルがありません" });
         return;
+      }
+      for (const f of files) {
+        if (!isAllowedFile(f.originalname, f.mimetype)) {
+          res.status(400).json({
+            error: "対応していないファイル形式です（PDF/PNG/JPG/WEBPのみ）",
+          });
+          return;
+        }
       }
       if (!process.env.GEMINI_API_KEY) {
         res.status(500).json({
@@ -56,14 +83,36 @@ export function createApp(): express.Express {
       const checked: CheckedDoc[] = validateBatch(extracted);
       res.json({ docs: checked });
     } catch (err) {
-      res.status(500).json({ error: String((err as Error)?.message ?? err) });
+      console.error("extract error:", err instanceof Error ? err.message : err);
+      res.status(500).json({ error: "AIの呼び出しに失敗しました（回数制限の可能性）" });
     }
   });
 
-  // 画面上で修正した値を受け取り、CSV/Excelで返す
+  // 値の修正後に要確認を再判定する（FIX8）
+  app.post("/api/validate", async (req, res) => {
+    try {
+      const docs = (req.body?.docs ?? []) as ExtractedDoc[];
+      const extracted: ExtractedDoc[] = docs.map((d) => ({
+        file: String((d as { file?: unknown })?.file ?? "unknown"),
+        data: (d as { data?: ExtractedDoc["data"] })?.data as ExtractedDoc["data"],
+      }));
+      const checked = validateBatch(extracted);
+      res.json({ docs: checked });
+    } catch (err) {
+      console.error("validate error:", err instanceof Error ? err.message : err);
+      res.status(500).json({ error: "サーバーでエラーが発生しました" });
+    }
+  });
+
+  // 画面上で修正した値を受け取り、CSV/Excelで返す（サーバ側で再検証して上書き・FIX7）
   app.post("/api/export", async (req, res) => {
     try {
-      const docs = (req.body?.docs ?? []) as CheckedDoc[];
+      const incoming = (req.body?.docs ?? []) as CheckedDoc[];
+      const extracted: ExtractedDoc[] = incoming.map((d) => ({
+        file: String((d as { file?: unknown })?.file ?? "unknown"),
+        data: (d as { data?: ExtractedDoc["data"] })?.data as ExtractedDoc["data"],
+      }));
+      const docs = validateBatch(extracted);
       const format = String(req.query.format ?? "xlsx");
       if (format === "csv") {
         res.setHeader("Content-Type", "text/csv; charset=utf-8");
@@ -79,16 +128,47 @@ export function createApp(): express.Express {
       res.setHeader("Content-Disposition", "attachment; filename=result.xlsx");
       res.send(buf);
     } catch (err) {
-      res.status(500).json({ error: String((err as Error)?.message ?? err) });
+      console.error("export error:", err instanceof Error ? err.message : err);
+      res.status(500).json({ error: "サーバーでエラーが発生しました" });
     }
   });
 
   app.get("/api/health", (_req, res) => res.json({ ok: true }));
+
+  // エラーハンドラ（FIX5: MulterErrorはJSON日本語のみ、その他は固定メッセージ）
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+    const e = err as { code?: string; message?: string };
+    if (e && typeof e.code === "string" && e.code.startsWith("LIMIT_")) {
+      if (e.code === "LIMIT_FILE_SIZE") {
+        res.status(413).json({ error: "ファイルサイズが大きすぎます（1件20MBまで）" });
+        return;
+      }
+      res.status(400).json({ error: "ファイルは最大10件までです" });
+      return;
+    }
+    if ((err as { name?: string })?.name === "MulterError") {
+      console.error("multer error:", e?.code ?? e?.message ?? err);
+      res.status(400).json({ error: "ファイルの受け付けに失敗しました" });
+      return;
+    }
+    console.error("server error:", err instanceof Error ? err.message : err);
+    res.status(500).json({ error: "サーバーでエラーが発生しました" });
+  });
   return app;
 }
 
 const PORT = Number(process.env.PORT ?? 3000);
-if (process.env.VITEST !== "true" && import.meta.url === `file://${process.argv[1]?.replace(/\\/g, "/")}`) {
+export function isMainModule(): boolean {
+  const entry = process.argv[1];
+  if (!entry) return false;
+  try {
+    return import.meta.url === pathToFileURL(entry).href;
+  } catch {
+    return false;
+  }
+}
+if (process.env.VITEST !== "true" && isMainModule()) {
   createApp().listen(PORT, () => {
     console.log(`open http://localhost:${PORT}`);
     console.log(`GEMINI_MODEL=${process.env.GEMINI_MODEL ?? "gemini-3.8-flash"}(default)`);
@@ -133,11 +213,14 @@ drop.ondrop=e=>{e.preventDefault();drop.classList.remove('over');files=[...e.dat
 document.getElementById('go').onclick=async()=>{
  if(!files.length){msg.textContent='ファイルを選んでください';return;}
  msg.textContent='読み取り中...';
- const fd=new FormData();files.forEach(f=>fd.append('files',f,f.name));
- const r=await fetch('/api/extract',{method:'POST',body:fd});
- const j=await r.json();
- if(!r.ok){msg.textContent='エラー: '+j.error;return;}
- docs=j.docs;render();msg.textContent=docs.length+'件読み取り完了';
+ try{
+  const fd=new FormData();files.forEach(f=>fd.append('files',f,f.name));
+  const r=await fetch('/api/extract',{method:'POST',body:fd});
+  const text=await r.text();
+  let j;try{j=JSON.parse(text);}catch{msg.textContent='エラー: サーバー応答を解析できませんでした';return;}
+  if(!r.ok){msg.textContent='エラー: '+(j.error||('HTTP '+r.status));return;}
+  docs=j.docs;render();msg.textContent=docs.length+'件読み取り完了';
+ }catch(e){msg.textContent='エラー: '+(e&&e.message?e.message:e);}
 };
 document.getElementById('demo').onclick=async()=>{
  // APIキーなしでも触れるよう、ダミーの1件を表示
@@ -158,11 +241,25 @@ function render(){
 function setPath(d,path,val){
  const numFields=new Set(['data.subtotal','data.total']);
  const [a,b]=path.split('.');d[a][b]=numFields.has(path)?(val==='' ?null:Number(val)):val;
- // 再計算はサーバ側のvalidate相当を簡易に: 合計チェックのみ更新
+ // サーバ側でvalidateBatchをやり直して要確認と理由を更新する（FIX8）
+ revalidate(d);
+}
+async function revalidate(d){
+ try{
+  const r=await fetch('/api/validate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({docs:[{file:d.file,data:d.data}]})});
+  const text=await r.text();
+  let j;try{j=JSON.parse(text);}catch{msg.textContent='エラー: 検証応答を解析できませんでした';return;}
+  if(!r.ok){msg.textContent='エラー: '+(j.error||('HTTP '+r.status));return;}
+  const updated=j.docs&&j.docs[0];
+  if(updated){d.validation=updated.validation;d.taxTotal=updated.taxTotal;render();}
+ }catch(e){msg.textContent='エラー: '+(e&&e.message?e.message:e);}
 }
 async function dl(fmt){
- const r=await fetch('/api/export?format='+fmt,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({docs})});
- const blob=await r.blob();const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fmt==='csv'?'result.csv':'result.xlsx';a.click();
+ try{
+  const r=await fetch('/api/export?format='+fmt,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({docs})});
+  if(!r.ok){const t=await r.text();let j;try{j=JSON.parse(t);}catch{j=null;}msg.textContent='エラー: '+(j&&j.error?j.error:('HTTP '+r.status));return;}
+  const blob=await r.blob();const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fmt==='csv'?'result.csv':'result.xlsx';a.click();
+ }catch(e){msg.textContent='エラー: '+(e&&e.message?e.message:e);}
 }
 document.getElementById('dlCsv').onclick=()=>dl('csv');
 document.getElementById('dlXlsx').onclick=()=>dl('xlsx');

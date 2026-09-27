@@ -8,3 +8,4 @@ assets/fonts/*.ttf
 assets/fonts/*.otf
 assets/fonts/*.woff*
 !assets/fonts/.gitkeep
+FIX-TASK.md

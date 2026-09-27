@@ -51,11 +51,15 @@ describe("CSV出力", () => {
     const lines = csv.replace(/^\uFEFF/, "").trim().split("\n");
     expect(lines[0].split(",")).toEqual([...SUMMARY_COLUMNS]);
     expect(lines).toHaveLength(3); // ヘッダ+2行
-    // 要確認フラグが反映されている
-    expect(lines[1]).toContain("OK");
-    expect(lines[2]).toContain("要確認");
+    // 要確認フラグは列単位で比較する（FIX15: toContain("OK")等の弱い判定をやめる）
+    const header = lines[0].split(",");
+    const flagIdx = header.indexOf("needsReview");
+    expect(flagIdx).toBeGreaterThanOrEqual(0);
+    expect(lines[1].split(",")[flagIdx]).toBe("OK");
+    expect(lines[2].split(",")[flagIdx]).toBe("要確認");
     // 理由列にline-mathが含まれる
-    expect(lines[2]).toContain("line-math");
+    const reasonIdx = header.indexOf("reasons");
+    expect(lines[2].split(",")[reasonIdx]).toContain("line-math");
   });
 
   it("カンマ・ダブルクォートを含む値はエスケープされる", () => {

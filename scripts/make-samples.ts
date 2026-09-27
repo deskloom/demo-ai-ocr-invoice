@@ -26,11 +26,11 @@ function breakReg(valid: string): string {
   return `T${brokenCheck}${valid.slice(2)}`;
 }
 
-const REG_A = fakeReg("111111111111");
-const REG_B = fakeReg("222222222222");
-const REG_C = fakeReg("333333333333");
-const REG_D = fakeReg("444444444444");
-const REG_BAD = breakReg(fakeReg("555555555555"));
+const REG_A = fakeReg("120345678901");
+const REG_B = fakeReg("234567890123");
+const REG_C = fakeReg("345678901234");
+const REG_D = fakeReg("456789012345");
+const REG_BAD = breakReg(fakeReg("567890123456"));
 
 interface ItemSpec {
   name: string;
@@ -132,8 +132,9 @@ function drawPdf(
     doc.fontSize(20).text(opts.title, { align: "center" });
     doc.moveDown();
     doc.fontSize(11);
-    doc.text(`発行元: ${opts.issuer || "(記載なし)"}`);
-    doc.text(`登録番号: ${opts.reg ?? "(なし)"}`);
+    // 空の項目は行自体を印字しない(「(記載なし)」「(なし)」等の文字を入れない)
+    if (opts.issuer && opts.issuer.trim() !== "") doc.text(`発行元: ${opts.issuer}`);
+    if (opts.reg && opts.reg.trim() !== "") doc.text(`登録番号: ${opts.reg}`);
     doc.text(`発行日: ${opts.issueDate}`);
     doc.text(`支払期限: ${opts.dueDate ?? "-"}`);
     doc.text(`書類番号: ${opts.docNo}`);
@@ -168,22 +169,78 @@ function drawPdf(
 function svgInvoice(opts: {
   title: string;
   issuer: string;
-  reg: string;
+  reg: string | null;
   issueDate: string;
+  dueDate: string | null;
   docNo: string;
-  total: number;
+  items: { name: string; quantity: number; unitPrice: number; amount: number }[];
+  subtotal: number | null;
+  taxBreakdown: { rate: number; base: number; tax: number }[];
+  total: number | null;
+  scan?: boolean;
 }): Buffer {
   const esc = (s: string) =>
     s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800">
-<rect width="1200" height="800" fill="white"/>
-<text x="600" y="90" font-size="52" text-anchor="middle" font-family="sans-serif">${esc(opts.title)}</text>
-<text x="80" y="200" font-size="34" font-family="sans-serif">発行元: ${esc(opts.issuer)}</text>
-<text x="80" y="260" font-size="34" font-family="sans-serif">登録番号: ${esc(opts.reg)}</text>
-<text x="80" y="320" font-size="34" font-family="sans-serif">発行日: ${esc(opts.issueDate)}</text>
-<text x="80" y="380" font-size="34" font-family="sans-serif">書類番号: ${esc(opts.docNo)}</text>
-<text x="80" y="480" font-size="44" font-family="sans-serif">合計: ${opts.total.toLocaleString("ja-JP")} 円</text>
-<text x="80" y="560" font-size="26" fill="#555" font-family="sans-serif">※デモ用架空サンプル</text>
+  const yen = (n: number | null) =>
+    n === null ? "-" : `${n.toLocaleString("ja-JP")} 円`;
+  let y = 200;
+  const lines: string[] = [];
+  lines.push(`<text x="600" y="90" font-size="52" text-anchor="middle" font-family="sans-serif">${esc(opts.title)}</text>`);
+  // 空の項目は行自体を印字しない
+  if (opts.issuer && opts.issuer.trim() !== "") {
+    lines.push(`<text x="80" y="${y}" font-size="34" font-family="sans-serif">発行元: ${esc(opts.issuer)}</text>`);
+    y += 60;
+  }
+  if (opts.reg && opts.reg.trim() !== "") {
+    lines.push(`<text x="80" y="${y}" font-size="34" font-family="sans-serif">登録番号: ${esc(opts.reg)}</text>`);
+    y += 60;
+  }
+  lines.push(`<text x="80" y="${y}" font-size="34" font-family="sans-serif">発行日: ${esc(opts.issueDate)}</text>`);
+  y += 60;
+  if (opts.dueDate) {
+    lines.push(`<text x="80" y="${y}" font-size="34" font-family="sans-serif">支払期限: ${esc(opts.dueDate)}</text>`);
+    y += 60;
+  }
+  lines.push(`<text x="80" y="${y}" font-size="34" font-family="sans-serif">書類番号: ${esc(opts.docNo)}</text>`);
+  y += 80;
+  lines.push(`<text x="80" y="${y}" font-size="32" font-family="sans-serif">【品目】</text>`);
+  y += 50;
+  if (opts.items.length === 0) {
+    lines.push(`<text x="80" y="${y}" font-size="30" font-family="sans-serif">(品目の記載なし・合計のみ)</text>`);
+    y += 50;
+  } else {
+    for (const li of opts.items) {
+      lines.push(
+        `<text x="80" y="${y}" font-size="28" font-family="sans-serif">・${esc(li.name)}  数量${li.quantity} × 単価${li.unitPrice.toLocaleString("ja-JP")} = ${li.amount.toLocaleString("ja-JP")}円</text>`,
+      );
+      y += 48;
+    }
+  }
+  y += 20;
+  lines.push(`<text x="80" y="${y}" font-size="32" font-family="sans-serif">小計: ${esc(yen(opts.subtotal))}</text>`);
+  y += 50;
+  for (const t of opts.taxBreakdown) {
+    lines.push(
+      `<text x="80" y="${y}" font-size="30" font-family="sans-serif">消費税 ${Math.round(t.rate * 100)}%: 対象額 ${t.base.toLocaleString("ja-JP")}円 / 税額 ${t.tax.toLocaleString("ja-JP")}円</text>`,
+    );
+    y += 48;
+  }
+  y += 10;
+  lines.push(`<text x="80" y="${y}" font-size="44" font-family="sans-serif">合計: ${esc(yen(opts.total))}</text>`);
+  y += 70;
+  lines.push(`<text x="80" y="${y}" font-size="26" fill="#555" font-family="sans-serif">※デモ用架空サンプル</text>`);
+  const height = Math.max(900, y + 80);
+  // スキャン風の薄いグレー背景ムラ
+  const bg = opts.scan
+    ? `<rect width="1200" height="${height}" fill="#f4f4f4"/>
+<ellipse cx="300" cy="300" rx="420" ry="260" fill="#e9e9e9" opacity="0.55"/>
+<ellipse cx="950" cy="700" rx="380" ry="300" fill="#ececec" opacity="0.5"/>
+<ellipse cx="650" cy="500" rx="550" ry="380" fill="#f8f8f8" opacity="0.6"/>
+<rect width="1200" height="${height}" fill="white" opacity="0.35"/>`
+    : `<rect width="1200" height="${height}" fill="white"/>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="${height}">
+${bg}
+${lines.join("\n")}
 </svg>`;
   return Buffer.from(svg, "utf-8");
 }
@@ -388,20 +445,29 @@ async function main(): Promise<void> {
       );
     } else {
       const svg = svgInvoice({
-        title: p.title, issuer: p.issuer || "(記載なし)", reg: p.reg ?? "(なし)",
-        issueDate: p.issueDate, docNo: p.docNo, total: total ?? 0,
+        title: p.title,
+        issuer: p.issuer,
+        reg: p.reg,
+        issueDate: p.issueDate,
+        dueDate: p.dueDate,
+        docNo: p.docNo,
+        items: lines,
+        subtotal,
+        taxBreakdown,
+        total,
+        scan: p.tiltScan === true,
       });
       let img = sharp(svg).flatten({ background: "#ffffff" });
       if (p.tiltScan) {
         img = sharp(
           await sharp(svg).flatten({ background: "#ffffff" }).png().toBuffer(),
         )
-          .rotate(1.8, { background: "#ffffff" })
-          .modulate({ brightness: 1.15, saturation: 0.4 })
-          .blur(0.6);
+          .rotate(3.5, { background: "#e8e8e8" })
+          .modulate({ brightness: 1.08, saturation: 0.35 })
+          .blur(0.8);
       }
       if (p.kind === "png") await img.png().toFile(outPath);
-      else await img.jpeg({ quality: 72 }).toFile(outPath);
+      else await img.jpeg({ quality: p.tiltScan ? 68 : 78 }).toFile(outPath);
     }
     await writeFile(
       path.join(EXPECTED, p.file.replace(/\.[^.]+$/, ".json")),

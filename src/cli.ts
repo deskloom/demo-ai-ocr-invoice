@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { readFile, mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import "dotenv/config";
 import { GeminiExtractor, type Extractor } from "./gemini.js";
 import { validateBatch } from "./validate.js";
@@ -66,6 +67,16 @@ export async function runCli(
   console.log(`保存: ${out}`);
 }
 
-if (import.meta.url === `file://${process.argv[1]?.replace(/\\/g, "/")}`) {
+export function isMainModule(): boolean {
+  const entry = process.argv[1];
+  if (!entry) return false;
+  try {
+    return import.meta.url === pathToFileURL(entry).href;
+  } catch {
+    return false;
+  }
+}
+
+if (isMainModule()) {
   await runCli(process.argv);
 }
