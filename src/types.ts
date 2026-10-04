@@ -10,7 +10,7 @@ export interface LineItem {
 export interface TaxEntry {
   /** 税率 (例: 0.1, 0.08) */
   rate: number;
-  /** 対象額(税抜) */
+  /** 対象額(税抜表示の書類は税抜額、税込表示の書類は税込額) */
   base: number;
   /** 税額 */
   tax: number;
@@ -28,6 +28,11 @@ export interface InvoiceData {
   taxBreakdown: TaxEntry[];
   total: number | null;
   currency: string;
+  /**
+   * 書類の金額が税込表示か。true=税込(小計・合計・対象額が税込。税額は内数)、
+   * false=税抜、null/未指定=不明(税抜として検証する)。
+   */
+  taxIncluded?: boolean | null;
 }
 
 export interface ExtractedDoc {

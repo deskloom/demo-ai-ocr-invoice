@@ -4,9 +4,9 @@ import path from "node:path";
 import { validateBatch } from "../src/validate.js";
 import type { ExtractedDoc } from "../src/types.js";
 
-// FIX4: サンプルと正解の整合テスト
+// サンプルと正解の整合テスト
 // samples/expected/*.json を validateBatch に通した needsReview が正解JSONの needsReview と一致する
-describe("サンプルと正解の整合 (FIX4)", () => {
+describe("サンプルと正解の整合", () => {
   it("全サンプルの needsReview が正解JSONと一致する", async () => {
     const dir = path.join("samples", "expected");
     const files = (await readdir(dir)).filter((f) => f.endsWith(".json")).sort();

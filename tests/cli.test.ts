@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { readFile, mkdir, rm, writeFile } from "node:fs/promises";
-import { runCli } from "../src/cli.js";
+import path from "node:path";
+import { runCli, expandInputs } from "../src/cli.js";
 import { StubExtractor } from "../src/gemini.js";
 import type { InvoiceData } from "../src/types.js";
 
@@ -31,7 +32,7 @@ describe("CLI(偽AI応答・Geminiを呼ばない)", () => {
     expect(xlsx.length).toBeGreaterThan(1000);
     await runCli(["node", "cli", "out/_t-a.pdf", "--out", "out/_t-result.csv"], () => stub);
     const csv = await readFile("out/_t-result.csv", "utf-8");
-    // 列単位で比較する（FIX15）
+    // 列単位で比較する
     const lines = csv.replace(/^\uFEFF/, "").trim().split("\n");
     const header = lines[0].split(",");
     const flagIdx = header.indexOf("needsReview");
@@ -55,5 +56,26 @@ describe("CLI(偽AI応答・Geminiを呼ばない)", () => {
     expect(lines[1].split(",")[flagIdx]).toBe("要確認");
     await rm("out/_t-b.pdf");
     await rm("out/_t-b.csv");
+  });
+});
+
+describe("CLIの入力パス展開 (Windowsはシェルが * を展開しない)", () => {
+  it("samples/*.pdf のようなワイルドカードを展開して全件を読む", async () => {
+    const stub = new StubExtractor({ "*": data() });
+    await mkdir("out/_glob", { recursive: true });
+    await writeFile("out/_glob/a1.pdf", "%PDF-1.4 dummy");
+    await writeFile("out/_glob/a2.pdf", "%PDF-1.4 dummy");
+    await writeFile("out/_glob/b.png", "dummy");
+    expect(await expandInputs(["out/_glob/*.pdf"])).toEqual([
+      path.join("out/_glob", "a1.pdf"),
+      path.join("out/_glob", "a2.pdf"),
+    ]);
+    expect(await expandInputs(["out/_glob/a?.pdf", "out/_glob/b.png"]).then((x) => x.length)).toBe(3);
+    // 一致なしは元の文字列を残す
+    expect(await expandInputs(["out/_glob/*.xyz"])).toEqual(["out/_glob/*.xyz"]);
+    await runCli(["node", "cli", "out/_glob/*.pdf", "--out", "out/_glob/r.json"], () => stub);
+    const json = JSON.parse(await readFile("out/_glob/r.json", "utf-8")) as unknown[];
+    expect(json.length).toBe(2);
+    await rm("out/_glob", { recursive: true });
   });
 });

@@ -8,8 +8,8 @@ import type { CheckedDoc, ExtractedDoc, InvoiceData } from "./types.js";
 export const REASONS = {
   LINE_MATH: "line-math: 品目の数量×単価と金額が不一致",
   SUBTOTAL: "subtotal: 品目金額の合計と小計が不一致",
-  TAX: "tax: 税率ごとの税額が対象額×税率の端数処理(切捨/四捨五入/切上)のいずれとも不一致",
-  TOTAL: "total: 小計+税額合計と合計が不一致",
+  TAX: "tax: 税率ごとの税額が対象額×税率(税込表示なら対象額×率/(1+率))の端数処理(切捨/四捨五入/切上)のいずれとも不一致",
+  TOTAL: "total: 小計+税額合計と合計が不一致(税込表示なら小計と合計が不一致)",
   REG_FORMAT: "registrationNumber: 登録番号の形式(T+13桁)を満たさない",
   REG_CHECK: "registrationNumber: 登録番号のチェックデジットが不正",
   DATE_INVALID: "date: 日付が実在しない/形式(YYYY-MM-DD)が不正",
@@ -39,7 +39,7 @@ export function isValidDateString(s: string | null | undefined): boolean {
 /**
  * 法人番号(13桁)の検査用数字を計算する。
  * 国税庁の方式: 下12桁を右から 1,2,1,2... で加重合計し、
- * 合計を9で割った余りを9から引く(10になったら0)。
+ * 合計を9で割った余り(0〜8)を9から引く。結果は常に1〜9になる(0にも10にもならない)。
  * @param base12 登録番号(Tを除く13桁)のうち先頭1桁(検査用数字)を除いた下12桁
  */
 export function corporateCheckDigit(base12: string): string {
@@ -50,9 +50,8 @@ export function corporateCheckDigit(base12: string): string {
     const w = i % 2 === 0 ? 1 : 2;
     sum += d * w;
   }
-  const r = sum % 9;
-  const c = 9 - r;
-  return String(c === 10 ? 0 : c);
+  // 余りは0〜8なので結果は1〜9(10や0にはならない)
+  return String(9 - (sum % 9));
 }
 
 /** T+13桁の形式か */
@@ -125,8 +124,13 @@ function checkSubtotal(data: InvoiceData): string[] {
   return [];
 }
 
-function taxCandidates(base: number, rate: number): number[] {
-  const exact = base * rate;
+/**
+ * 税額の候補(切捨・四捨五入・切上)。
+ * 税込表示(taxIncluded=true)では対象額が税込なので、税額 = 対象額×率/(1+率)。
+ * 税抜表示では 税額 = 対象額×率。
+ */
+function taxCandidates(base: number, rate: number, taxIncluded = false): number[] {
+  const exact = taxIncluded ? (base * rate) / (1 + rate) : base * rate;
   // 浮動小数誤差対策: 小数第2位で丸める前の候補を3種作る
   const c = new Set([
     Math.floor(exact + 1e-9),
@@ -140,7 +144,7 @@ function checkTax(data: InvoiceData): string[] {
   const out: string[] = [];
   for (const t of data.taxBreakdown) {
     if (!isFiniteNum(t.base) || !isFiniteNum(t.tax) || typeof t.rate !== "number") continue;
-    const cands = taxCandidates(t.base, t.rate);
+    const cands = taxCandidates(t.base, t.rate, data.taxIncluded === true);
     if (!cands.includes(t.tax)) {
       out.push(
         `${REASONS.TAX} (税率${Math.round(t.rate * 100)}%: 対象額=${t.base} 税額=${t.tax} 期待値候補=${cands.join("/")})`,
@@ -156,6 +160,13 @@ function checkTotal(data: InvoiceData): string[] {
     .map((t) => t.tax)
     .filter(isFiniteNum)
     .reduce((a, b) => a + b, 0);
+  if (data.taxIncluded === true) {
+    // 税込表示: 小計・合計とも税込金額なので税を足さない(税は内数)。
+    if (data.subtotal !== data.total) {
+      return [`${REASONS.TOTAL} (税込表示: 小計=${data.subtotal} ≠ 合計=${data.total})`];
+    }
+    return [];
+  }
   if (data.subtotal + taxTotal !== data.total) {
     return [`${REASONS.TOTAL} (小計=${data.subtotal}+税=${taxTotal} ≠ 合計=${data.total})`];
   }

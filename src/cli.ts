@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { readFile, mkdir, writeFile } from "node:fs/promises";
+import { readFile, mkdir, writeFile, readdir } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import "dotenv/config";
@@ -22,6 +22,38 @@ function mimeOf(file: string): string {
   return "application/octet-stream";
 }
 
+/**
+ * 入力パスの * と ? を展開する(Windows の cmd/PowerShell はシェルが展開しないため)。
+ * 対応はファイル名部分のみ(例: samples/*.pdf)。ディレクトリ部分のワイルドカードや ** は非対応。
+ * Node 22 の fs.promises.glob は実験的機能で警告が出るため使わず、自前の簡易展開にしている。
+ * 一致が無ければ元の文字列を返す(後続の読み込みで日本語ではなく通常のエラーになる)。
+ */
+export async function expandInputs(inputs: string[]): Promise<string[]> {
+  const out: string[] = [];
+  for (const input of inputs) {
+    const base = path.basename(input);
+    if (!/[*?]/.test(base)) {
+      out.push(input);
+      continue;
+    }
+    const dir = path.dirname(input);
+    // * → 任意の文字列、? → 任意の1文字、それ以外は文字どおり(正規表現の特殊文字はエスケープ)
+    const pattern = [...base]
+      .map((ch) => (ch === "*" ? ".*" : ch === "?" ? "." : ch.replace(/[\\^$.*+?()[\]{}|]/g, "\\$&")))
+      .join("");
+    const re = new RegExp(`^${pattern}$`, "i");
+    let names: string[] = [];
+    try {
+      names = (await readdir(dir)).filter((n) => re.test(n)).sort();
+    } catch {
+      /* ディレクトリが無い等は一致なし扱い */
+    }
+    if (names.length === 0) out.push(input);
+    else out.push(...names.map((n) => path.join(dir, n)));
+  }
+  return out;
+}
+
 export async function runCli(
   argv: string[],
   extractorFactory?: () => Extractor,
@@ -29,7 +61,8 @@ export async function runCli(
   const args = argv.slice(2);
   const outIdx = args.indexOf("--out");
   const out = outIdx >= 0 ? args[outIdx + 1] : undefined;
-  const inputs = args.filter((a, i) => a !== "--out" && args[i - 1] !== "--out" && !a.startsWith("--"));
+  const rawInputs = args.filter((a, i) => a !== "--out" && args[i - 1] !== "--out" && !a.startsWith("--"));
+  const inputs = await expandInputs(rawInputs);
   if (inputs.length === 0 || !out) {
     console.log("使い方: npm run extract -- <入力PDF/画像...> --out out/result.xlsx");
     console.log("例: npm run extract -- samples/inv-01.pdf samples/rcp-01.pdf --out out/result.xlsx");

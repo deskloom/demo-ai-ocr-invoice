@@ -25,7 +25,7 @@ function fieldScore(expected: unknown, actual: unknown): boolean {
   return JSON.stringify(expected ?? null) === JSON.stringify(actual ?? null);
 }
 
-// FIX11: lineItems（件数と各行の品目名・数量・単価・金額）と taxBreakdown を比較項目に加える
+// lineItems（件数と各行の品目名・数量・単価・金額）と taxBreakdown を比較項目に加える
 export const FIELDS: (keyof InvoiceData)[] = [
   "docType",
   "issuer",

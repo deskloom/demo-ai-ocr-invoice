@@ -43,7 +43,7 @@ async function setupDir(files: string[]): Promise<string> {
   return dir;
 }
 
-describe("eval (FIX2+11)", () => {
+describe("eval", () => {
   it("1日上限の429 → 途中結果を保存して正常終了する", async () => {
     const dir = await setupDir(["a.pdf", "b.pdf"]);
     let calls = 0;

@@ -88,7 +88,7 @@ export function createApp(): express.Express {
     }
   });
 
-  // 値の修正後に要確認を再判定する（FIX8）
+  // 値の修正後に要確認を再判定する
   app.post("/api/validate", async (req, res) => {
     try {
       const docs = (req.body?.docs ?? []) as ExtractedDoc[];
@@ -104,7 +104,7 @@ export function createApp(): express.Express {
     }
   });
 
-  // 画面上で修正した値を受け取り、CSV/Excelで返す（サーバ側で再検証して上書き・FIX7）
+  // 画面上で修正した値を受け取り、CSV/Excelで返す（サーバ側で再検証して上書き）
   app.post("/api/export", async (req, res) => {
     try {
       const incoming = (req.body?.docs ?? []) as CheckedDoc[];
@@ -135,7 +135,7 @@ export function createApp(): express.Express {
 
   app.get("/api/health", (_req, res) => res.json({ ok: true }));
 
-  // エラーハンドラ（FIX5: MulterErrorはJSON日本語のみ、その他は固定メッセージ）
+  // エラーハンドラ（MulterErrorはJSON日本語のみ、その他は固定メッセージ）
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
     const e = err as { code?: string; message?: string };
@@ -169,8 +169,10 @@ export function isMainModule(): boolean {
   }
 }
 if (process.env.VITEST !== "true" && isMainModule()) {
-  createApp().listen(PORT, () => {
-    console.log(`open http://localhost:${PORT}`);
+  // 既定は手元からのみ接続可(127.0.0.1)。LAN等に公開する場合は HOST=0.0.0.0 を指定する
+  const HOST = process.env.HOST || "127.0.0.1";
+  createApp().listen(PORT, HOST, () => {
+    console.log(`open http://${HOST === "0.0.0.0" ? "localhost" : HOST}:${PORT}`);
     console.log(`GEMINI_MODEL=${process.env.GEMINI_MODEL ?? "gemini-3.8-flash"}(default)`);
     console.log(`APIキー設定: ${process.env.GEMINI_API_KEY ? "あり" : "なし"}`);
   });
@@ -223,16 +225,15 @@ document.getElementById('go').onclick=async()=>{
  }catch(e){msg.textContent='エラー: '+(e&&e.message?e.message:e);}
 };
 document.getElementById('demo').onclick=async()=>{
- // APIキーなしでも触れるよう、ダミーの1件を表示
- docs=[{file:'demo-01.pdf',taxTotal:1000,data:{docType:'invoice',issuer:'架空サンプル商事',registrationNumber:'T1234567890123',issueDate:'2026-09-01',dueDate:'2026-09-30',documentNumber:'INV-0001',lineItems:[],subtotal:10000,taxBreakdown:[{rate:0.1,base:10000,tax:1000}],total:11000,currency:'JPY'},validation:{needsReview:false,reasons:[]}}];
- render();msg.textContent='ダミー表示です。各セルを編集してCSV/Excel保存を試せます';
+ // APIキーなしでも触れるよう、ダミーの1件を表示する。判定は表示前に /api/validate を通した結果を使う
+ docs=[{file:'demo-01.pdf',taxTotal:0,data:{docType:'invoice',issuer:'架空サンプル商事',registrationNumber:'T9234567890123',issueDate:'2026-09-01',dueDate:'2026-09-30',documentNumber:'INV-0001',lineItems:[],subtotal:10000,taxBreakdown:[{rate:0.1,base:10000,tax:1000}],total:11000,currency:'JPY'},validation:{needsReview:false,reasons:[]}}];
+ if(await revalidate()){msg.textContent='ダミー表示です。各セルを編集してCSV/Excel保存を試せます';}
 };
 function render(){
  const tb=document.querySelector('#tbl tbody');tb.innerHTML='';
  docs.forEach((d,i)=>{
   const tr=document.createElement('tr');if(d.validation.needsReview)tr.className='review';
   const cell=(v,path)=>{const td=document.createElement('td');const inp=document.createElement('input');inp.value=v??'';inp.onchange=()=>setPath(d,path,inp.value);td.appendChild(inp);return td;};
-  tr.append(document.createTextNode(''),...[]);
   const t=(s)=>{const td=document.createElement('td');td.textContent=s;return td;};
   tr.append(t(d.file),t(d.data.docType),cell(d.data.issuer,'data.issuer'),cell(d.data.registrationNumber,'data.registrationNumber'),cell(d.data.issueDate,'data.issueDate'),cell(d.data.dueDate,'data.dueDate'),cell(d.data.documentNumber,'data.documentNumber'),cell(d.data.subtotal,'data.subtotal'),t(d.taxTotal),cell(d.data.total,'data.total'),t(d.validation.needsReview?'要確認':'OK'),(()=>{const td=document.createElement('td');td.className='reason';td.textContent=d.validation.reasons.join(' / ');return td;})());
   tb.append(tr);
@@ -241,18 +242,20 @@ function render(){
 function setPath(d,path,val){
  const numFields=new Set(['data.subtotal','data.total']);
  const [a,b]=path.split('.');d[a][b]=numFields.has(path)?(val==='' ?null:Number(val)):val;
- // サーバ側でvalidateBatchをやり直して要確認と理由を更新する（FIX8）
- revalidate(d);
+ // サーバ側でvalidateBatchをやり直して要確認と理由を更新する
+ revalidate();
 }
-async function revalidate(d){
+// 全件をまとめて送る(二重登録の判定は全件が必要なため)。成功したら true
+async function revalidate(){
  try{
-  const r=await fetch('/api/validate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({docs:[{file:d.file,data:d.data}]})});
+  const r=await fetch('/api/validate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({docs:docs.map(d=>({file:d.file,data:d.data}))})});
   const text=await r.text();
-  let j;try{j=JSON.parse(text);}catch{msg.textContent='エラー: 検証応答を解析できませんでした';return;}
-  if(!r.ok){msg.textContent='エラー: '+(j.error||('HTTP '+r.status));return;}
-  const updated=j.docs&&j.docs[0];
-  if(updated){d.validation=updated.validation;d.taxTotal=updated.taxTotal;render();}
- }catch(e){msg.textContent='エラー: '+(e&&e.message?e.message:e);}
+  let j;try{j=JSON.parse(text);}catch{msg.textContent='エラー: 検証応答を解析できませんでした';return false;}
+  if(!r.ok){msg.textContent='エラー: '+(j.error||('HTTP '+r.status));return false;}
+  if(!Array.isArray(j.docs)||j.docs.length!==docs.length){msg.textContent='エラー: 検証応答の件数が一致しません';return false;}
+  j.docs.forEach((u,i)=>{docs[i].validation=u.validation;docs[i].taxTotal=u.taxTotal;});
+  render();return true;
+ }catch(e){msg.textContent='エラー: '+(e&&e.message?e.message:e);return false;}
 }
 async function dl(fmt){
  try{

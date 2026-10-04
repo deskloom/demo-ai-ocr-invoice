@@ -47,7 +47,7 @@ function goodDoc(file = "ok.pdf"): CheckedDoc {
   };
 }
 
-describe("サーバ堅牢化 (FIX5/6/7/8)", () => {
+describe("サーバ堅牢化", () => {
   it("x-powered-by を返さない", async () => {
     const base = await listen();
     const r = await fetch(`${base}/`);
@@ -112,7 +112,7 @@ describe("サーバ堅牢化 (FIX5/6/7/8)", () => {
     });
     expect(r.ok).toBe(true);
     const csv = await r.text();
-    // 列単位で確認 (FIX15: 弱い判定の修正)
+    // 列単位で確認
     const lines = csv.replace(/^\uFEFF/, "").trim().split("\n");
     const header = lines[0].split(",");
     const idx = header.indexOf("needsReview");
@@ -133,5 +133,43 @@ describe("サーバ堅牢化 (FIX5/6/7/8)", () => {
     const j = JSON.parse(await r.text()) as { docs: CheckedDoc[] };
     expect(j.docs[0].validation.needsReview).toBe(true);
     expect(j.docs[0].validation.reasons.join(" ")).toContain("total");
+  });
+});
+
+describe("画面の再検証と既定ホスト", () => {
+  const post = (base: string, docs: unknown[]) =>
+    fetch(`${base}/api/validate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ docs }),
+    }).then((r) => r.json() as Promise<{ docs: CheckedDoc[] }>);
+
+  it("デモ用ダミー登録番号 T9234567890123 は検査数字が正しく、要確認にならない", async () => {
+    const base = await listen();
+    const d = goodDoc("demo-01.pdf");
+    d.data.registrationNumber = "T9234567890123";
+    d.data.lineItems = [];
+    d.data.subtotal = 10000;
+    d.data.taxBreakdown = [{ rate: 0.1, base: 10000, tax: 1000 }];
+    d.data.total = 11000;
+    const j = await post(base, [{ file: d.file, data: d.data }]);
+    expect(j.docs[0].validation).toEqual({ needsReview: false, reasons: [] });
+  });
+
+  it("全件を送ると、1件を編集しても二重登録の要確認が残る", async () => {
+    const base = await listen();
+    const a = goodDoc("a.pdf");
+    const b = goodDoc("b.pdf"); // a と同じ発行元・書類番号・合計
+    const first = await post(base, [a, b].map((d) => ({ file: d.file, data: d.data })));
+    expect(first.docs[0].validation.needsReview).toBe(false);
+    expect(first.docs[1].validation.reasons.join(" ")).toContain("duplicate");
+    // 1件目の無関係な項目(発行元は変えない)を編集して全件を再送
+    a.data.dueDate = "2026-10-15";
+    const again = await post(base, [a, b].map((d) => ({ file: d.file, data: d.data })));
+    expect(again.docs.length).toBe(2);
+    expect(again.docs[1].validation.reasons.join(" ")).toContain("duplicate");
+    // 編集した1件だけ送ると重複は消える(画面が全件送る理由)
+    const only = await post(base, [{ file: b.file, data: b.data }]);
+    expect(only.docs[0].validation.needsReview).toBe(false);
   });
 });

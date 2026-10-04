@@ -51,7 +51,7 @@ describe("CSV出力", () => {
     const lines = csv.replace(/^\uFEFF/, "").trim().split("\n");
     expect(lines[0].split(",")).toEqual([...SUMMARY_COLUMNS]);
     expect(lines).toHaveLength(3); // ヘッダ+2行
-    // 要確認フラグは列単位で比較する（FIX15: toContain("OK")等の弱い判定をやめる）
+    // 要確認フラグは列単位で比較する
     const header = lines[0].split(",");
     const flagIdx = header.indexOf("needsReview");
     expect(flagIdx).toBeGreaterThanOrEqual(0);

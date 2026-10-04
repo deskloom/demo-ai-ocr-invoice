@@ -64,7 +64,7 @@ export const INVOICE_JSON_SCHEMA = {
         type: "object",
         properties: {
           rate: { type: "number", description: "税率(0.1 または 0.08)" },
-          base: { type: "number", description: "対象額(税抜)" },
+          base: { type: "number", description: "税率ごとの対象額。書類に印字された額をそのまま(税込表示の書類なら税込額、税抜表示なら税抜額)" },
           tax: { type: "number", description: "税額" },
         },
         required: ["rate", "base", "tax"],
@@ -72,6 +72,10 @@ export const INVOICE_JSON_SCHEMA = {
     },
     total: { type: ["number", "null"] },
     currency: { type: "string", description: "既定 JPY" },
+    taxIncluded: {
+      type: ["boolean", "null"],
+      description: "小計・合計などの金額が税込表示ならtrue、税抜表示(税を別途加算)ならfalse、書類から判断できなければnull",
+    },
   },
   required: [
     "docType",
@@ -85,6 +89,7 @@ export const INVOICE_JSON_SCHEMA = {
     "taxBreakdown",
     "total",
     "currency",
+    "taxIncluded",
   ],
 } as const;
 
@@ -99,6 +104,7 @@ const PROMPT = [
   "- lineItems が無い書類(合計のみの領収書等)は空配列。",
   "- taxBreakdown が無い場合は空配列。税率は 0.1 / 0.08 の数値。",
   "- currency は既定 JPY。",
+  "- taxIncluded: 合計が「税込」表示で消費税が内数(内税)ならtrue、税抜の小計に消費税を加算して合計になっているならfalse、判断できなければnull。",
   "- 計算や検証は不要。書面に書かれた値をそのまま写すこと。",
 ].join("\n");
 
@@ -216,6 +222,7 @@ export function normalizeData(raw: unknown): InvoiceData {
       typeof r.currency === "string" && r.currency.trim() !== ""
         ? r.currency.trim()
         : "JPY",
+    taxIncluded: typeof r.taxIncluded === "boolean" ? r.taxIncluded : null,
   };
 }
 

@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { normalizeData } from "../src/gemini.js";
 
-// FIX13: normalizeData のテスト
-describe("normalizeData (FIX13)", () => {
+// normalizeData のテスト
+describe("normalizeData", () => {
   it("全角数字・カンマ付き金額を数値化する", () => {
     const d = normalizeData({
       docType: "invoice",
@@ -65,5 +65,14 @@ describe("normalizeData (FIX13)", () => {
     expect(d.total).toBeNull();
     expect(d.currency).toBe("JPY");
     expect(d.lineItems[0]).toEqual({ name: "品", quantity: 1, unitPrice: 100, amount: 100 });
+  });
+});
+
+describe("normalizeData: taxIncluded", () => {
+  it("booleanはそのまま、それ以外(欠落・文字列)はnullにする", () => {
+    expect(normalizeData({ taxIncluded: true }).taxIncluded).toBe(true);
+    expect(normalizeData({ taxIncluded: false }).taxIncluded).toBe(false);
+    expect(normalizeData({}).taxIncluded).toBeNull();
+    expect(normalizeData({ taxIncluded: "税込" }).taxIncluded).toBeNull();
   });
 });
